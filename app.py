@@ -35,11 +35,6 @@ def download_model():
             file_id = GDRIVE_SHARE_LINK.split("/d/")[1].split("/")[0]
             gdown.download(id=file_id, output=MODEL_PATH, quiet=False)
             
-# ── Modell laden (gecacht) ─────────────────────────────────────────────────────
-@st.cache_resource
-def lade_modell():
-    return keras.models.load_model(MODEL_PATH)
-
 # ── Hilfsfunktionen ────────────────────────────────────────────────────────────
 def bild_vorbereiten(img: Image.Image) -> np.ndarray:
     img = img.convert("RGB").resize(IMG_SIZE)
