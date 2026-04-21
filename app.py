@@ -3,6 +3,7 @@ import streamlit as st
 import numpy as np
 from PIL import Image
 import tf_keras as keras
+import gdown 
 
 # ── Konfiguration ──────────────────────────────────────────────────────────────
 MODEL_PATH = "https://drive.google.com/file/d/1TG0SjD8Df3U4_RgJ8O5gUqBPq-2Cz2NL/view?usp=drive_link"
@@ -28,7 +29,12 @@ TONNE = {
     "Plastik":  ("🟡 Gelbe Tonne / Gelber Sack", "#F5C518"),
     "Restmüll": ("⚫ Restmülltonne", "#555555"),
 }
-
+def download_model():
+    if not os.path.exists(MODEL_PATH):
+        with st.spinner("Modell wird heruntergeladen … (einmalig, ~60 MB)"):
+            file_id = GDRIVE_SHARE_LINK.split("/d/")[1].split("/")[0]
+            gdown.download(id=file_id, output=MODEL_PATH, quiet=False)
+            
 # ── Modell laden (gecacht) ─────────────────────────────────────────────────────
 @st.cache_resource
 def lade_modell():
