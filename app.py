@@ -57,7 +57,6 @@ st.set_page_config(
 st.title("♻️ Mülltrennungs-KI")
 st.write("Lade ein Foto deines Abfalls hoch und die KI sagt dir, in welche Tonne er gehört.")
 
-modell = lade_modell()
 
 hochgeladen = st.file_uploader(
     "Bild auswählen (JPG, PNG, WEBP)",
