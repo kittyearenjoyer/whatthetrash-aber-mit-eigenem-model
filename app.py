@@ -1,10 +1,11 @@
 import streamlit as st
 import numpy as np
 from PIL import Image
-import tensorflow as tf
+import tensorflow as ts
+import os
 
 # ── Konfiguration ──────────────────────────────────────────────────────────────
-MODEL_PATH = "mein_model_für_die_app.h5"
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "mein_model_für_die_app.h5")
 IMG_SIZE   = (224, 224)          # anpassen falls dein Modell eine andere Größe erwartet
 
 # Klassen in der Reihenfolge, die dein Modell gelernt hat.
