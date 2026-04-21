@@ -65,6 +65,7 @@ hochgeladen = st.file_uploader(
 
 if hochgeladen:
     bild = Image.open(hochgeladen)
+    model = model.h5
 
     col1, col2 = st.columns([1, 1])
 
