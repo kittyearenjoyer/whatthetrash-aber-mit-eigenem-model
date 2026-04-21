@@ -3,4 +3,4 @@ tensorflow-cpu==2.10.0
 numpy==1.23.5
 Pillow
 h5py==3.8.0
-protobuf<4
+protobuf
