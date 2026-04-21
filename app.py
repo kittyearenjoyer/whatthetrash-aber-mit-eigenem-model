@@ -5,7 +5,7 @@ from PIL import Image
 import tf_keras as keras
 
 # ── Konfiguration ──────────────────────────────────────────────────────────────
-GDRIVE_SHARE_LINK = "https://drive.google.com/file/d/1TG0SjD8Df3U4_RgJ8O5gUqBPq-2Cz2NL/view?usp=drive_link"
+MODEL_PATH = "https://drive.google.com/file/d/1TG0SjD8Df3U4_RgJ8O5gUqBPq-2Cz2NL/view?usp=drive_link"
 IMG_SIZE   = (224, 224)          # anpassen falls dein Modell eine andere Größe erwartet
 
 # Klassen in der Reihenfolge, die dein Modell gelernt hat.
