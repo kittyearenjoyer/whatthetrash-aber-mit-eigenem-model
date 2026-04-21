@@ -1,17 +1,11 @@
+import os
 import streamlit as st
 import numpy as np
 from PIL import Image
-import tensorflow as ts
-import os
-import tf_keras as keras  # statt tensorflow.keras
+import tf_keras as keras
 
-
-@st.cache_resource
-def lade_modell():
-    return keras.models.load_model(MODEL_PATH)
-    
 # ── Konfiguration ──────────────────────────────────────────────────────────────
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "mein_model_für_die_app.h5")
+MODEL_PATH = "mein_model_für_die_app.h5"
 IMG_SIZE   = (224, 224)          # anpassen falls dein Modell eine andere Größe erwartet
 
 # Klassen in der Reihenfolge, die dein Modell gelernt hat.
@@ -38,7 +32,7 @@ TONNE = {
 # ── Modell laden (gecacht) ─────────────────────────────────────────────────────
 @st.cache_resource
 def lade_modell():
-    return tf.keras.models.load_model(MODEL_PATH)
+    return keras.models.load_model(MODEL_PATH)
 
 # ── Hilfsfunktionen ────────────────────────────────────────────────────────────
 def bild_vorbereiten(img: Image.Image) -> np.ndarray:
