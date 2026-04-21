@@ -73,7 +73,7 @@ if hochgeladen:
 
     with col2:
         with st.spinner("Analysiere …"):
-            klasse, konfidenz, alle_preds = klassifizieren(img)
+            klasse, konfidenz, alle_preds = klassifizieren(bild, model)
 
         tonne_text, tonne_farbe = TONNE.get(klasse, ("❓ Unbekannt", "#999999"))
 
