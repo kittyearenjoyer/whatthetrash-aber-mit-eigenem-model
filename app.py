@@ -91,10 +91,10 @@ div[data-testid="stTabs"] + div {
 # ---------------- MODEL LADEN (FIX) ----------------
 @st.cache_resource
 def load_model():
-    return tf.keras.models.load_model(MODEL_PATH, compile=False)
-
-model = load_model()
-
+    return tf.keras.models.load_model(
+        MODEL_PATH,
+        compile=False
+    )
 # ---------------- KLASSEN ANPASSEN ----------------
 class_names = [
     "plastic",
