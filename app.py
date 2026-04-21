@@ -88,15 +88,14 @@ div[data-testid="stTabs"] + div {
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------- MODEL LADEN ----------------
+# ---------------- MODEL LADEN (FIX) ----------------
 @st.cache_resource
 def load_model():
-    return tf.keras.models.load_model(MODEL_PATH)
+    return tf.keras.models.load_model(MODEL_PATH, compile=False)
 
 model = load_model()
 
 # ---------------- KLASSEN ANPASSEN ----------------
-# HIER DEINE REIHENFOLGE EINTRAGEN
 class_names = [
     "plastic",
     "paper",
@@ -108,8 +107,13 @@ class_names = [
 
 # ---------------- FUNKTIONEN ----------------
 def preprocess_image(image):
-    img = image.resize((224, 224))   # falls dein Modell andere Größe braucht ändern
-    img = np.array(img) / 255.0
+    img = image.resize((224, 224))   # Falls dein Modell andere Größe braucht -> ändern
+    img = np.array(img).astype("float32") / 255.0
+
+    # falls RGBA Bild hochgeladen wird
+    if img.shape[-1] == 4:
+        img = img[:, :, :3]
+
     img = np.expand_dims(img, axis=0)
     return img
 
@@ -132,6 +136,7 @@ def get_disposal(label):
 
 def run_prediction(image):
     img = preprocess_image(image)
+
     pred = model.predict(img, verbose=0)[0]
 
     idx = np.argmax(pred)
@@ -205,4 +210,4 @@ with tab2:
 
 # ---------------- FOOTER ----------------
 st.write("")
-st.caption("What the Trash • TensorFlow Waste Classifier")
+st.caption("What the Trash • Eigenes TensorFlow Modell")
