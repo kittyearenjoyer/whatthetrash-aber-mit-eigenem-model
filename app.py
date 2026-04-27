@@ -64,7 +64,7 @@ def map_to_bin(class_name):
 API_KEY     = "6FXxln7g0fLOOAVQkBTg"
 WORKSPACE   = "juliuss-workspace-gdhwh"
 WORKFLOW_ID = "detect-and-classify"
-API_URL     = "https://serverless.roboflow.com/{WORKSPACE}/workflows/{WORKFLOW_ID}?api_key={API_KEY}"
+API_URL     = f"https://serverless.roboflow.com/{WORKSPACE}/workflows/{WORKFLOW_ID}?api_key={API_KEY}"
 
 def img_to_b64(img):
     buf = io.BytesIO()
