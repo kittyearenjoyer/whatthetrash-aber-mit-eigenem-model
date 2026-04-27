@@ -61,7 +61,7 @@ def map_to_bin(class_name):
     return BIN_INFO["residual"]
 
 # ── Roboflow REST API (kein SDK, kein opencv) ──────────────────────────────────
-API_KEY     = "6FXxln7g0fLOOAVQkBTg"
+API_KEY     = st.secrets["ROBOFLOW_API_KEY]
 WORKSPACE   = "juliuss-workspace-gdhwh"
 WORKFLOW_ID = "detect-and-classify"
 API_URL     = f"https://serverless.roboflow.com/{WORKSPACE}/workflows/{WORKFLOW_ID}?api_key={API_KEY}"
