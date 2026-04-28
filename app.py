@@ -8,7 +8,7 @@ import io
 
 # ── Page config ────────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="MuellScan",
+    page_title="WhatTheTrash",
     page_icon="♻️",
     layout="centered",
 )
