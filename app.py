@@ -177,4 +177,4 @@ else:
             shown.add(info["label"])
 
 st.markdown('<hr class="divider">', unsafe_allow_html=True)
-st.markdown('<p style="text-align:center;color:#2e7d32;font-size:0.8rem;font-family:Space Mono,monospace;">MuellScan &middot; KittyEarEnjoyer/schule_ &middot; MobileNetV3</p>', unsafe_allow_html=True)
+st.markdown('<p style="text-align:center;color:#2e7d32;font-size:0.8rem;font-family:Space Mono,monospace;">WhatTheTrash &middot; KittyEarEnjoyer/schule_ &middot; MobileNetV3</p>', unsafe_allow_html=True)
