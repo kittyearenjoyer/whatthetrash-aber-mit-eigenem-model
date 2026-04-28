@@ -1,9 +1,14 @@
 import streamlit as st
 from PIL import Image
+import torch
+import torch.nn as nn
+from torchvision import models, transforms
+from huggingface_hub import hf_hub_download
 import io
 
+# ── Page config ────────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="MuellScan – KI-Muelltrennung",
+    page_title="MuellScan",
     page_icon="♻️",
     layout="centered",
 )
@@ -34,66 +39,84 @@ footer { visibility:hidden; }
 </style>
 """, unsafe_allow_html=True)
 
-# ── Label → Tonne mapping ──────────────────────────────────────────────────────
-# Will be populated after model loads (uses model's actual label names)
+# ── Klassen & Tonnen-Mapping ───────────────────────────────────────────────────
+# MobileNetV3 mit 10 Klassen – standard Trash-Klassifizierungs-Datensatz
+# Indizes 0-9 werden den wahrscheinlichsten Klassen zugeordnet.
+# Falls dein Modell andere Klassen hat, werden sie im Debug-Bereich angezeigt.
+CLASS_NAMES = [
+    "cardboard",   # 0
+    "glass",       # 1
+    "metal",       # 2
+    "paper",       # 3
+    "plastic",     # 4
+    "trash",       # 5
+    "battery",     # 6
+    "biological",  # 7
+    "clothes",     # 8
+    "shoes",       # 9
+]
+
 BIN_INFO = {
-    "plastic":     {"label":"Gelbe Tonne",    "css":"bin-yellow","emoji":"🟡","tip":"Leere Plastikverpackungen, Dosen, Verbundmaterialien. Bitte kurz ausspuelen."},
-    "paper":       {"label":"Papiertonne",    "css":"bin-blue",  "emoji":"📘","tip":"Zeitungen, Kartons, Pappe. Kein beschmutztes Papier."},
-    "glass":       {"label":"Glascontainer",  "css":"bin-green", "emoji":"🟢","tip":"Nach Farbe trennen: weiss, braun, gruen. Keine Glasscherben."},
-    "organic":     {"label":"Biotonne",       "css":"bin-brown", "emoji":"🟤","tip":"Lebensmittelreste, Kaffeesatz, Gartenabfaelle."},
-    "metal":       {"label":"Gelbe Tonne",    "css":"bin-yellow","emoji":"🟡","tip":"Dosen, Alufolie, Metallverpackungen in die Gelbe Tonne."},
-    "cardboard":   {"label":"Papiertonne",    "css":"bin-blue",  "emoji":"📘","tip":"Kartons zusammenfalten, dann in die Papiertonne."},
-    "trash":       {"label":"Restmuelltonne", "css":"bin-gray",  "emoji":"⚫","tip":"Alles, was nicht recycelt werden kann."},
-    "battery":     {"label":"Sondermuell",    "css":"bin-red",   "emoji":"🔴","tip":"Batterien zum Wertstoffhof oder Rueckgabeboxen im Supermarkt."},
-    "default":     {"label":"Restmuelltonne", "css":"bin-gray",  "emoji":"⚫","tip":"Wenn unsicher: Restmuelltonne. So wenig wie moeglich hierher."},
+    "cardboard":  {"label": "Papiertonne",    "css": "bin-blue",   "emoji": "📦", "tip": "Kartons zusammenfalten und in die Papiertonne."},
+    "glass":      {"label": "Glascontainer",  "css": "bin-green",  "emoji": "🍶", "tip": "Nach Farbe trennen: weiss, braun, gruen. Keine Pfandflaschen."},
+    "metal":      {"label": "Gelbe Tonne",    "css": "bin-yellow", "emoji": "🥫", "tip": "Dosen, Alufolie und Metallverpackungen in die Gelbe Tonne."},
+    "paper":      {"label": "Papiertonne",    "css": "bin-blue",   "emoji": "📰", "tip": "Zeitungen, Hefte, Pappe – kein beschmutztes Papier."},
+    "plastic":    {"label": "Gelbe Tonne",    "css": "bin-yellow", "emoji": "🧴", "tip": "Leere Plastikverpackungen in die Gelbe Tonne. Kurz ausspuelen."},
+    "trash":      {"label": "Restmuelltonne", "css": "bin-gray",   "emoji": "🗑️", "tip": "Alles was nicht recycelt werden kann. So wenig wie moeglich."},
+    "battery":    {"label": "Sondermuell",    "css": "bin-red",    "emoji": "🔋", "tip": "Batterien zum Wertstoffhof oder in die Sammelbox im Supermarkt."},
+    "biological": {"label": "Biotonne",       "css": "bin-brown",  "emoji": "🍌", "tip": "Lebensmittelreste, Kaffeesatz, Gartenabfaelle in die Biotonne."},
+    "clothes":    {"label": "Altkleidercontainer", "css": "bin-green", "emoji": "👕", "tip": "Saubere Kleidung in den Altkleidercontainer oder Secondhand."},
+    "shoes":      {"label": "Altkleidercontainer", "css": "bin-green", "emoji": "👟", "tip": "Schuhe paarweise zusammenbinden, in den Altkleidercontainer."},
+    "unknown":    {"label": "Restmuelltonne", "css": "bin-gray",   "emoji": "❓", "tip": "Wenn unsicher: Restmuelltonne. Im Zweifel beim Wertstoffhof nachfragen."},
 }
 
-def map_label_to_bin(label: str) -> dict:
-    l = label.lower().strip()
-    for key in BIN_INFO:
-        if key in l:
-            return BIN_INFO[key]
-    # fuzzy matches
-    if any(k in l for k in ["kunststoff","verpackung","dose","folie","pet"]):
-        return BIN_INFO["plastic"]
-    if any(k in l for k in ["papier","zeitung","karton","pappe"]):
-        return BIN_INFO["paper"]
-    if any(k in l for k in ["glas","flasche"]):
-        return BIN_INFO["glass"]
-    if any(k in l for k in ["bio","kompost","essen","obst","gemuese","rest"]):
-        return BIN_INFO["organic"]
-    if any(k in l for k in ["metall","alu","eisen","stahl","blech"]):
-        return BIN_INFO["metal"]
-    if any(k in l for k in ["batterie","akku","elektronik","sonder"]):
-        return BIN_INFO["battery"]
-    return BIN_INFO["default"]
+def get_bin(class_name: str) -> dict:
+    return BIN_INFO.get(class_name.lower(), BIN_INFO["unknown"])
 
-# ── Model loading (cached so it only runs once) ────────────────────────────────
+# ── Modell laden (MobileNetV3 Large, 10 Klassen) ──────────────────────────────
 @st.cache_resource(show_spinner=False)
 def load_model():
-    from transformers import ViTForImageClassification, ViTImageProcessor
-    import torch
-    model_id = "KittyEarEnjoyer/schule_muellklassifizierung"
-    processor = ViTImageProcessor.from_pretrained(model_id)
-    model     = ViTForImageClassification.from_pretrained(model_id)
+    # Gewichte von HuggingFace runterladen
+    weights_path = hf_hub_download(
+        repo_id="KittyEarEnjoyer/schule_",
+        filename="model.pth"
+    )
+    # Architektur aufbauen
+    model = models.mobilenet_v3_large(weights=None)
+    # Letzten Classifier auf 10 Klassen anpassen
+    in_features = model.classifier[-1].in_features
+    model.classifier[-1] = nn.Linear(in_features, 10)
+    # Gewichte laden
+    state = torch.load(weights_path, map_location="cpu")
+    # state_dict kann direkt oder unter einem Key gespeichert sein
+    if isinstance(state, dict) and "model_state_dict" in state:
+        state = state["model_state_dict"]
+    elif isinstance(state, dict) and "state_dict" in state:
+        state = state["state_dict"]
+    model.load_state_dict(state)
     model.eval()
-    return processor, model
+    return model
 
-# ── Inference ──────────────────────────────────────────────────────────────────
+# ── Preprocessing ──────────────────────────────────────────────────────────────
+preprocess = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.ToTensor(),
+    transforms.Normalize(
+        mean=[0.485, 0.456, 0.406],
+        std=[0.229, 0.224, 0.225]
+    ),
+])
+
 def classify(img: Image.Image):
-    import torch
-    processor, model = load_model()
-    inputs  = processor(images=img.convert("RGB"), return_tensors="pt")
+    model = load_model()
+    tensor = preprocess(img.convert("RGB")).unsqueeze(0)
     with torch.no_grad():
-        logits = model(**inputs).logits
-    probs   = torch.softmax(logits, dim=-1)[0]
-    top5_idx = probs.argsort(descending=True)[:5].tolist()
-    results = []
-    for idx in top5_idx:
-        label = model.config.id2label[idx]
-        conf  = probs[idx].item()
-        results.append({"label": label, "score": conf})
-    return results
+        logits = model(tensor)
+    probs = torch.softmax(logits, dim=-1)[0]
+    top5  = probs.argsort(descending=True)[:5].tolist()
+    return [{"class": CLASS_NAMES[i] if i < len(CLASS_NAMES) else f"klasse_{i}",
+              "index": i,
+              "score": probs[i].item()} for i in top5]
 
 # ── UI ─────────────────────────────────────────────────────────────────────────
 st.markdown('<div class="hero-title">&#9851;&#65039; MuellScan</div>', unsafe_allow_html=True)
@@ -120,13 +143,13 @@ if image_source:
         st.markdown("### Ergebnis")
 
         top = predictions[0]
-        bi  = map_label_to_bin(top["label"])
+        bi  = get_bin(top["class"])
         pct = top["score"] * 100
 
         st.markdown(f"""
         <div class="result-box">
             <div class="result-label">{bi['emoji']} {bi['label']}</div>
-            <div class="result-conf">Modell-Klasse: <b>{top['label']}</b> &nbsp;·&nbsp; Konfidenz: <b>{pct:.1f}%</b></div>
+            <div class="result-conf">Erkannt als: <b>{top['class']}</b> &nbsp;·&nbsp; Konfidenz: <b>{pct:.1f}%</b></div>
             <div class="bar-wrap"><div class="bar-fill" style="width:{min(pct,100):.1f}%"></div></div>
             <div class="tip-box">&#128161; {bi['tip']}</div>
         </div>""", unsafe_allow_html=True)
@@ -134,22 +157,24 @@ if image_source:
         if len(predictions) > 1:
             st.markdown("#### Weitere Klassen (Top 5)")
             for pred in predictions[1:]:
-                bi2  = map_label_to_bin(pred["label"])
+                bi2  = get_bin(pred["class"])
                 pct2 = pred["score"] * 100
                 st.markdown(
                     f'<div class="bin-card {bi2["css"]}">'
-                    f'{bi2["emoji"]} {pred["label"]} &rarr; {bi2["label"]} '
+                    f'{bi2["emoji"]} {pred["class"]} &rarr; {bi2["label"]} '
                     f'<span style="opacity:0.6;font-weight:300">({pct2:.1f}%)</span>'
                     f'</div>', unsafe_allow_html=True)
 
+        with st.expander("🔧 Debug: Rohe Modell-Ausgabe"):
+            st.json(predictions)
+
 else:
-    # Show bin guide when no image
     st.markdown("### Welche Tonne ist die richtige?")
-    shown = {}
+    shown = set()
     for info in BIN_INFO.values():
         if info["label"] not in shown:
             st.markdown(f'<div class="bin-card {info["css"]}">{info["emoji"]} <b>{info["label"]}</b> — {info["tip"]}</div>', unsafe_allow_html=True)
-            shown[info["label"]] = True
+            shown.add(info["label"])
 
 st.markdown('<hr class="divider">', unsafe_allow_html=True)
-st.markdown('<p style="text-align:center;color:#2e7d32;font-size:0.8rem;font-family:Space Mono,monospace;">MuellScan &middot; KittyEarEnjoyer/schule_muellklassifizierung &middot; Streamlit</p>', unsafe_allow_html=True)
+st.markdown('<p style="text-align:center;color:#2e7d32;font-size:0.8rem;font-family:Space Mono,monospace;">MuellScan &middot; KittyEarEnjoyer/schule_ &middot; MobileNetV3</p>', unsafe_allow_html=True)
