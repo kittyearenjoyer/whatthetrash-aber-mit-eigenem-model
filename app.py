@@ -119,7 +119,7 @@ def classify(img: Image.Image):
               "score": probs[i].item()} for i in top5]
 
 # ── UI ─────────────────────────────────────────────────────────────────────────
-st.markdown('<div class="hero-title">&#9851;&#65039; MuellScan</div>', unsafe_allow_html=True)
+st.markdown('<div class="hero-title">&#9851;&#65039; WhatTheTrash</div>', unsafe_allow_html=True)
 st.markdown('<div class="hero-sub">Foto hochladen – KI erkennt den richtigen Muelleimer.</div>', unsafe_allow_html=True)
 st.markdown('<hr class="divider">', unsafe_allow_html=True)
 
